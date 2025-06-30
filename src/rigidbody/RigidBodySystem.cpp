@@ -91,6 +91,20 @@ void RigidBodySystem::step(float dt)
         //   1. First update the velocities of each rigid body in @a m_bodies, 
         //   2. Followed by updates of the positions and orientations.
         //
+        if (!b->fixed) {
+            Eigen::Matrix3f R = b->q.normalized().toRotationMatrix();
+            b->Iinv = R * b->IbodyInv * R.transpose();
+
+            b->xdot += dt * (1 / b->mass) * b->f;
+            b->omega += dt * b->Iinv * (b->tau - b->omega.cross(b->I*b->omega));
+
+            b->x += dt * b->xdot;
+            Eigen::Quaternionf dq;
+            Eigen::Vector3f half_dt_omega = 0.5f * dt * b->omega;
+            dq.w() = 1.0f;
+            dq.vec() = half_dt_omega;
+            b->q = (b->q * dq).normalized();
+        }
     }
 }
 

@@ -2,6 +2,7 @@
 #include "rigidbody/RigidBody.h"
 
 #include <Eigen/Dense>
+#include <cstdio>
 
 Distance::Distance() : Joint()
 {
@@ -26,5 +27,17 @@ void Distance::computeJacobian()
     // of the distance constraint.
     //
 
-}
+    Eigen::Vector3f x0 = body0->x + body0->q * r0;
+    Eigen::Vector3f x1 = body1->x + body1->q * r1;
 
+    phi(0) = (x1 - x0).norm() - d; //phi : distance between the two points minus the desired distance, is zero if the constraint is satisfied
+
+    J0.block(0, 0, 1, 3) = (x0 - x1).transpose(); // Distance Jacobian for body0 is the transposed vector from body0 to body1
+    J1.block(0, 0, 4, 6) = (x1 - x0).transpose(); // Same, but the other way around
+    
+    J0Minv.block(0, 0, 1, 3) = J0.block(0, 0, 1, 3) * (1 / body0->mass);
+    J0Minv.block(0, 0, 4, 6) = J0.block(0, 0, 4, 6) * body0->Iinv;
+
+    J1Minv.block(0, 0, 1, 3) = J1.block(0, 0, 1, 3) * (1 / body1->mass);
+    J1Minv.block(0, 0, 4, 6) = J1.block(0, 0, 4, 6) * body1->Iinv;
+}
