@@ -55,6 +55,4 @@ public:
     std::vector<Joint*> joints;         // Pointer array of joints involving this body.
 
     polyscope::SurfaceMesh* mesh;       // Used for rendering
-
-
 };

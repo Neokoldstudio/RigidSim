@@ -5,6 +5,7 @@
 #include "rigidbody/RigidBodySystem.h"
 
 
+#include <cmath>
 #include <polyscope/polyscope.h>
 #include <polyscope/point_cloud.h>
 
@@ -135,12 +136,20 @@ void CollisionDetect::collisionDetectSphereSphere(RigidBody* body0, RigidBody* b
     Sphere* sphere0 = dynamic_cast<Sphere*>(body0->geometry.get());
     Sphere* sphere1 = dynamic_cast<Sphere*>(body1->geometry.get());
 
-    // TODO Objective #3 
+    // TODO Objective #3
     // Implement sphere-sphere collision detection.
     // The function should check if a collision exists, and if it does
     // compute the contact normal, contact point, and penetration depth.
     //
-
+    Eigen::Vector3f dx = body0->x - body1->x;
+    if (dx.norm() < sphere0->radius + sphere1->radius)
+    {
+      Eigen::Vector3f n = dx / dx.norm();
+      Eigen::Vector3f p = 0.5 * ((body0->x - sphere0->radius * n)+(body1->x + sphere1->radius * n));
+      float phi = dx.norm() - (sphere0->radius + sphere1->radius);
+      m_contacts.emplace_back(body0, body1, p, n, phi);
+    }
+    
 }
 
 void CollisionDetect::collisionDetectSphereBox(RigidBody* body0, RigidBody* body1)
@@ -148,15 +157,82 @@ void CollisionDetect::collisionDetectSphereBox(RigidBody* body0, RigidBody* body
     Sphere* sphere = dynamic_cast<Sphere*>(body0->geometry.get());
     Box* box = dynamic_cast<Box*>(body1->geometry.get());
 
-    // TODO Objective #3 
-    // Implement sphere-box collision detection. 
+    // TODO Objective #3
+    // Implement sphere-box collision detection.
     // The function should check if a collision exists, and if it does
     // compute the contact normal, contact point, and penetration depth.
     //
     // Note: your implementation should handle the case where the sphere
     // is positioned completely inside of the box.
     //
+    Eigen::Matrix3f R = body1->q.normalized().toRotationMatrix();
+    Eigen::Vector3f c_local = R.transpose() * (body0->x - body1->x);
 
+    Eigen::Vector3f q;
+
+    for (int i = 0; i < 3; i++)
+    {
+        q[i] = (c_local[i] > box->dim[i]/2) ? box->dim[i]/2 : -box->dim[i]/2;
+    }
+
+    Eigen::Vector3f dx = c_local - q;
+
+    if (dx.norm() < sphere->radius) // collision !
+    {
+        float len = dx.norm();
+        Eigen::Vector3f n_local = dx/len;
+        Eigen::Vector3f p_local = q;
+        float phi = len - sphere->radius;
+        Eigen::Vector3f n = R * n_local;
+        Eigen::Vector3f p = R * p_local + body1->x;
+        m_contacts.emplace_back(body0, body1, p, n, phi);
+        return;
+    }
+
+    int insideCount = 0;
+    for (int i = 0; i < 3; i++)
+    {
+        if (-box->dim[i] / 2 <= c_local[i] && c_local[i] <= box->dim[i] / 2)
+            insideCount++;
+    }
+
+    if (insideCount == 3)
+    {
+        float sep = INFINITY;
+        float testStep;
+        int idx = 0;
+        int sign = 1;
+
+        Eigen::Vector3f n_local = Eigen::Vector3f::Zero();
+        Eigen::Vector3f p_local = Eigen::Vector3f::Zero();
+
+        for (int i = 0; i < 3; i++)
+        {
+            testStep = c_local[i] + box->dim[i]/2;
+            if (testStep < sep)
+            {
+                sep = testStep;
+                idx = i;
+                sign = -1;
+            }
+
+            float testStep = box->dim[i]/2 - c_local[i];
+            if (testStep < sep)
+            {
+                sep = testStep;
+                idx = i;
+                sign = 1;
+            }
+        }
+        n_local[idx] = sign;
+        p_local[idx] = sign * box->dim[idx]/2;
+        float phi = -sep;
+
+        Eigen::Vector3f n = R * n_local;
+        Eigen::Vector3f p = R * p_local + body1->x;
+        m_contacts.emplace_back(body0, body1, p, n, phi);
+        return;
+    }
 }
 
 
@@ -170,7 +246,6 @@ void CollisionDetect::collisionDetectCylinderSphere(RigidBody* body0, RigidBody*
     // The function should check if a collision exists, and if it does
     // compute the contact normal, contact point, and penetration depth.
     //
-
 }
 
 

@@ -32,12 +32,21 @@ void Distance::computeJacobian()
 
     phi(0) = (x1 - x0).norm() - d; //phi : distance between the two points minus the desired distance, is zero if the constraint is satisfied
 
-    J0.block(0, 0, 1, 3) = (x0 - x1).transpose(); // Distance Jacobian for body0 is the transposed vector from body0 to body1
-    J1.block(0, 0, 4, 6) = (x1 - x0).transpose(); // Same, but the other way around
-    
-    J0Minv.block(0, 0, 1, 3) = J0.block(0, 0, 1, 3) * (1 / body0->mass);
-    J0Minv.block(0, 0, 4, 6) = J0.block(0, 0, 4, 6) * body0->Iinv;
+    J0.block(0, 0, 1, 3) = (x0 - x1).transpose(); // linear part for body0
 
-    J1Minv.block(0, 0, 1, 3) = J1.block(0, 0, 1, 3) * (1 / body1->mass);
-    J1Minv.block(0, 0, 4, 6) = J1.block(0, 0, 4, 6) * body1->Iinv;
+    J1.block(0, 0, 1, 3) = (x1 - x0).transpose(); // Linear part for body1
+
+    J0Minv.block(0, 0, 1, 3) = J0.block(0, 0, 1, 3) * (1.0f / body0->mass);
+    J0Minv.block(0, 3, 1, 3) = J0.block(0, 3, 1, 3) * body0->Iinv;
+
+    J1Minv.block(0, 0, 1, 3) = J1.block(0, 0, 1, 3) * (1.0f / body1->mass);
+    J1Minv.block(0, 3, 1, 3) = J1.block(0, 3, 1, 3) * body1->Iinv;
+
+    printf("--------Jacobian computed--------\n");
+    printf("Distance Joint: phi = %f\n", phi(0));
+    printf("J0 = %f,%f,%f,%f,%f,%f\n", J0(0), J0(1), J0(2), J0(3),
+           J0(4), J0(5));
+    printf("J1 = %f,%f,%f,%f,%f,%f\n", J1(0, 0), J1(0, 1), J1(0, 2), J1(0, 3),
+           J1(0, 4), J1(0, 5));
+    printf("----------------------------------\n");
 }

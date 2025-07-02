@@ -4,6 +4,7 @@
 #include "contact/Contact.h"
 #include "rigidbody/RigidBody.h"
 #include "solvers/SolverPGS.h"
+#include <cstdio>
 
 namespace
 {
@@ -92,12 +93,16 @@ void RigidBodySystem::step(float dt)
         //   2. Followed by updates of the positions and orientations.
         //
         if (!b->fixed) {
+            printf("%f, %f, %f\n", b->fc[0], b->fc[1], b->fc[2]);
+          
             Eigen::Matrix3f R = b->q.normalized().toRotationMatrix();
             b->Iinv = R * b->IbodyInv * R.transpose();
 
+            // Update the linear and angular velocities.
             b->xdot += dt * (1 / b->mass) * b->f;
             b->omega += dt * b->Iinv * (b->tau - b->omega.cross(b->I*b->omega));
 
+            // Update the position and orientation.
             b->x += dt * b->xdot;
             Eigen::Quaternionf dq;
             Eigen::Vector3f half_dt_omega = 0.5f * dt * b->omega;
@@ -173,6 +178,7 @@ void RigidBodySystem::calcConstraintForces(float dt)
     {
         const Eigen::Vector6f f0 = j->J0.transpose() * j->lambda / dt;
         const Eigen::Vector6f f1 = j->J1.transpose() * j->lambda / dt;
+
         j->body0->fc += f0.head<3>();
         j->body0->tauc += f0.tail<3>();
         j->body1->fc += f1.head<3>();
