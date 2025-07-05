@@ -216,7 +216,7 @@ Mesh createBox(const Eigen::Vector3f& dim)
 
 Mesh createSphere(float radius)
 {
-    const float t = 0.5f * (1.0 + std::sqrtf(5.0f));
+    const float t = 0.5f * (1.0 + std::sqrt(5.0f));
 
     Mesh mesh;
 

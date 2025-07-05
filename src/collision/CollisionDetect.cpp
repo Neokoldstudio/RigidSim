@@ -168,11 +168,15 @@ void CollisionDetect::collisionDetectSphereBox(RigidBody* body0, RigidBody* body
     Eigen::Matrix3f R = body1->q.normalized().toRotationMatrix();
     Eigen::Vector3f c_local = R.transpose() * (body0->x - body1->x);
 
-    Eigen::Vector3f q;
+    Eigen::Vector3f q = Eigen::Vector3f::Zero();
 
     for (int i = 0; i < 3; i++)
     {
-        q[i] = (c_local[i] > box->dim[i]/2) ? box->dim[i]/2 : -box->dim[i]/2;
+        if(c_local[i] > box->dim[i]/2)
+            q[i] = box->dim[i]/2;
+
+        if(c_local[i] < -box->dim[i]/2)
+            q[i] = -box->dim[i]/2;
     }
 
     Eigen::Vector3f dx = c_local - q;
@@ -196,7 +200,7 @@ void CollisionDetect::collisionDetectSphereBox(RigidBody* body0, RigidBody* body
             insideCount++;
     }
 
-    if (insideCount == 3)
+    if (insideCount == 3) // the sphere is inside the box
     {
         float sep = INFINITY;
         float testStep;
@@ -241,11 +245,58 @@ void CollisionDetect::collisionDetectCylinderSphere(RigidBody* body0, RigidBody*
     Cylinder* cyl = dynamic_cast<Cylinder*>(body0->geometry.get());
     Sphere* sphere = dynamic_cast<Sphere*>(body1->geometry.get());
 
-    // TODO Objective #4 
-    // Implement cylinder-sphere collision detection. 
+    // TODO Objective #4
+    // Implement cylinder-sphere collision detection.
     // The function should check if a collision exists, and if it does
     // compute the contact normal, contact point, and penetration depth.
     //
+    Eigen::Matrix3f R = body0->q.normalized().toRotationMatrix();
+    Eigen::Vector3f c_local = R.transpose() * (body1->x - body0->x);
+
+    if(abs(c_local[1]) > cyl->height / 2 + sphere->radius)
+    {
+        return; //non-collision test true
+    }
+
+    Eigen::Vector3f v = Eigen::Vector3f(c_local[0], 0, c_local[2]);
+
+    if(v.norm() < cyl->radius + sphere->radius) //if true, then there is a collision
+    {
+        Eigen::Vector3f n_local = -v.normalized();
+        Eigen::Vector3f p_local = cyl->radius * v.normalized() + Eigen::Vector3f(0, c_local[1], 0);
+        float phi = v.norm() - cyl->radius - sphere->radius;
+        Eigen::Vector3f n = R * n_local;
+        Eigen::Vector3f p = R * p_local + body0->x;
+        m_contacts.emplace_back(body0, body1, p, n, phi);
+        return;
+    }
+
+    if(v.norm() < cyl->radius) //if true, then the sphere is inside the cylinder
+    {
+        Eigen::Vector3f n_local = -Eigen::Vector3f(0, ((c_local[1] >= 0) ? 1.0f : -1.0f) , 0);
+        Eigen::Vector3f p_local = v + Eigen::Vector3f(0, cyl->height / 2, 0);
+        float phi = abs(c_local[1]) - cyl->height / 2 - sphere->radius;
+        Eigen::Vector3f n = R * n_local;
+        Eigen::Vector3f p = R * p_local + body0->x;
+        m_contacts.emplace_back(body0, body1, p, n, phi);
+        return;
+    }
+
+    if(cyl->height < abs(c_local[1]) < cyl->height + sphere->radius && v.norm() > cyl->radius) //if true, then there could be a collision with the border of the cylinder's hat
+    {
+        Eigen::Vector3f p_cap = cyl->radius * v.normalized() + Eigen::Vector3f(0, (((c_local[1] >= 0) ? 1.0f : -1.0f)*cyl->height)/2, 0);
+
+        if((p_cap - c_local).norm() <= sphere->radius) //if true, then there is a collision
+        {
+            Eigen::Vector3f n_local = (p_cap-c_local).normalized();
+            Eigen::Vector3f p_local = p_cap;
+            float phi = (p_cap - c_local).norm() - sphere->radius;
+            Eigen::Vector3f n = R * n_local;
+            Eigen::Vector3f p = R * p_local + body0->x;
+            m_contacts.emplace_back(body0, body1, p, n, phi);
+            return;
+        }
+    }
 }
 
 
