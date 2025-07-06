@@ -93,7 +93,8 @@ void RigidBodySystem::step(float dt)
         //   2. Followed by updates of the positions and orientations.
         //
         if (!b->fixed) {
-            printf("%f, %f, %f\n", b->fc[0], b->fc[1], b->fc[2]);
+            b->f += b->fc; // Add contact forces to the total force.
+            b->tau += b->tauc; // Add contact torques to the total torque.
           
             Eigen::Matrix3f R = b->q.normalized().toRotationMatrix();
             b->Iinv = R * b->IbodyInv * R.transpose();
