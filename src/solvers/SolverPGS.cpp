@@ -298,5 +298,3 @@ void SolverPGS::solve(float h)
         }
     }
 }
-
-
