@@ -30,11 +30,21 @@ void Distance::computeJacobian()
     Eigen::Vector3f x0 = body0->x + body0->q * r0;
     Eigen::Vector3f x1 = body1->x + body1->q * r1;
 
-    phi(0) = (x1 - x0).norm() - d; //phi : distance between the two points minus the desired distance, is zero if the constraint is satisfied
+    Eigen::Vector3f dx = x1 - x0;
 
-    J0.block(0, 0, 1, 3) = (x0 - x1).transpose(); // linear part for body0
+    if (dx.norm() < 1e-6f) {
+        dx = Eigen::Vector3f(0,0,1); // Avoid division by zero
+    }
 
-    J1.block(0, 0, 1, 3) = (x1 - x0).transpose(); // Linear part for body1
+    phi(0) = dx.norm() - d; //phi : distance between the two points minus the desired distance, is zero if the constraint is satisfied
+
+    J0.block(0, 0, 1, 3) = -dx.transpose(); // linear part for body0
+    J1.block(0, 0, 1, 3) = dx.transpose();  // Linear part for body1
+
+    Eigen::Vector3f x0_cross = r0.cross(dx);
+    Eigen::Vector3f x1_cross = r1.cross(dx);
+    J0.block(0, 3, 1, 3) = x0_cross.transpose(); // angular part for body0
+    J1.block(0, 3, 1, 3) = -x1_cross.transpose(); // angular part for body1
 
     J0Minv.block(0, 0, 1, 3) = J0.block(0, 0, 1, 3) * (1.0f / body0->mass);
     J0Minv.block(0, 3, 1, 3) = J0.block(0, 3, 1, 3) * body0->Iinv;
