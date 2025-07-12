@@ -210,7 +210,7 @@ void SolverPGS::solve(float h)
     for (int i = 0; i < numContacts; ++i)
     {
         Contact* c = &contacts[i];
-        c->lambda.setOnes();
+        c->lambda.setZero();
 
         // TODO Compute the right-hand side vector for contacts, e.g.
         //      b = -gamma*phi/h - J*vel - h*JMinvJT*force
@@ -237,7 +237,7 @@ void SolverPGS::solve(float h)
     for (int i = 0; i < numJoints; ++i)
     {
         Joint* j = joints[i];
-
+        j->lambda.setZero();
         // TODO Compute the right-hand side vector for joints, e.g.
         //      b = -gamma*phi/h - J*vel - h*JMinvJT*force
         //

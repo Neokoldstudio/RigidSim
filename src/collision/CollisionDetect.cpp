@@ -6,6 +6,7 @@
 
 
 #include <cmath>
+#include <cstdio>
 #include <polyscope/polyscope.h>
 #include <polyscope/point_cloud.h>
 
@@ -172,6 +173,7 @@ void CollisionDetect::collisionDetectSphereBox(RigidBody* body0, RigidBody* body
 
     for (int i = 0; i < 3; i++)
     {
+        q[i] = c_local[i];
         if(c_local[i] > box->dim[i]/2)
             q[i] = box->dim[i]/2;
 
@@ -187,8 +189,8 @@ void CollisionDetect::collisionDetectSphereBox(RigidBody* body0, RigidBody* body
         Eigen::Vector3f n_local = dx/len;
         Eigen::Vector3f p_local = q;
         float phi = len - sphere->radius;
-        Eigen::Vector3f n = R * n_local;
-        Eigen::Vector3f p = R * p_local + body1->x;
+        Eigen::Vector3f n = body1->q * n_local;
+        Eigen::Vector3f p = body1->q * p_local + body1->x;
         m_contacts.emplace_back(body0, body1, p, n, phi);
         return;
     }
@@ -199,11 +201,11 @@ void CollisionDetect::collisionDetectSphereBox(RigidBody* body0, RigidBody* body
         if (-box->dim[i] / 2 <= c_local[i] && c_local[i] <= box->dim[i] / 2)
             insideCount++;
     }
-
+    printf("insideCount: %d\n", insideCount);
     if (insideCount == 3) // the sphere is inside the box
     {
-        float sep = INFINITY;
-        float testStep;
+        float sep = std::numeric_limits<float>::max();
+        float testStep = 0.0f;
         int idx = 0;
         int sign = 1;
 
@@ -215,6 +217,7 @@ void CollisionDetect::collisionDetectSphereBox(RigidBody* body0, RigidBody* body
             testStep = c_local[i] + box->dim[i]/2;
             if (testStep < sep)
             {
+                printf("hihi\n");
                 sep = testStep;
                 idx = i;
                 sign = -1;
@@ -223,17 +226,20 @@ void CollisionDetect::collisionDetectSphereBox(RigidBody* body0, RigidBody* body
             float testStep = box->dim[i]/2 - c_local[i];
             if (testStep < sep)
             {
+                printf("hehe\n");
                 sep = testStep;
                 idx = i;
                 sign = 1;
             }
         }
+
         n_local[idx] = sign;
+        p_local = c_local;
         p_local[idx] = sign * box->dim[idx]/2;
         float phi = -sep;
 
-        Eigen::Vector3f n = R * n_local;
-        Eigen::Vector3f p = R * p_local + body1->x;
+        Eigen::Vector3f n = body1->q * n_local;
+        Eigen::Vector3f p = body1->q * p_local + body1->x;
         m_contacts.emplace_back(body0, body1, p, n, phi);
         return;
     }
